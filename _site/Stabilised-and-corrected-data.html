@@ -11,7 +11,7 @@
 
 
 
-<title>my homepage</title>
+<title>analyse 0da6 8nov21_8h-9h</title>
 
 <script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
@@ -248,7 +248,7 @@ $(document).ready(function () {
   <a href="about.html">About</a>
 </li>
 <li>
-  <a href="Stabilised_corrected_data.html"> Example of stabilised and corrected data</a>
+  <a href="Stabilised and corrected data.html"> Example of stabilised &amp; corrected data</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -262,29 +262,120 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">my homepage</h1>
+<h1 class="title toc-ignore">analyse 0da6 8nov21_8h-9h</h1>
 
 </div>
 
 
-<div id="r-markdown" class="section level2">
-<h2>R Markdown</h2>
-<p>This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <a href="http://rmarkdown.rstudio.com" class="uri">http://rmarkdown.rstudio.com</a>.</p>
-<p>When you click the <strong>Knit</strong> button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:</p>
-<pre class="r"><code>summary(cars)</code></pre>
-<pre><code>##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00</code></pre>
+<pre class="r"><code>library(rjson)
+library(&quot;writexl&quot;)
+library(&quot;lubridate&quot;)</code></pre>
+<pre><code>## 
+## Attachement du package : &#39;lubridate&#39;</code></pre>
+<pre><code>## Les objets suivants sont masqués depuis &#39;package:base&#39;:
+## 
+##     date, intersect, setdiff, union</code></pre>
+<pre class="r"><code>library(manipulate)
+library(sp) # for polygons
+library(TeachingDemos) # for zoomplot</code></pre>
+<pre><code>## 
+## Attachement du package : &#39;TeachingDemos&#39;</code></pre>
+<pre><code>## L&#39;objet suivant est masqué depuis &#39;package:manipulate&#39;:
+## 
+##     slider</code></pre>
+<pre class="r"><code>library(fpc) # for dbscan clustering
+library(dbscan) # for KNN dbscan</code></pre>
+<pre><code>## 
+## Attachement du package : &#39;dbscan&#39;</code></pre>
+<pre><code>## L&#39;objet suivant est masqué depuis &#39;package:fpc&#39;:
+## 
+##     dbscan</code></pre>
+<pre class="r"><code>library(raster) # for distance calculation
+library(readxl)
+library(ggplot2)
+library(gganimate)</code></pre>
+<pre><code>## 
+## Attachement du package : &#39;gganimate&#39;</code></pre>
+<pre><code>## L&#39;objet suivant est masqué depuis &#39;package:raster&#39;:
+## 
+##     animate</code></pre>
+<pre class="r"><code>library(gifski)
+library(tictoc)</code></pre>
+<div id="data" class="section level1">
+<h1>Data</h1>
+<pre class="r"><code>`0da6_8nov21` &lt;- read.csv2(&quot;~/Devellyn/traitement_data position/Firminy installation/Firminy installation/data/0da6_8nov21.csv&quot;)
+
+tagId &lt;- unique(`0da6_8nov21`$tag)</code></pre>
 </div>
-<div id="including-plots" class="section level2">
-<h2>Including Plots</h2>
-<p>You can also embed plots, for example:</p>
-<p><img src="index_files/figure-html/pressure-1.png" width="672" /></p>
-<p>Note that the <code>echo = FALSE</code> parameter was added to the code chunk to prevent printing of the R code that generated the plot.</p>
+<div id="plan" class="section level1">
+<h1>Plan</h1>
+<pre class="r"><code>Wall_lignes_firminy &lt;- read_excel(&quot;~/Devellyn/traitement_data position/Firminy installation/Walls_ligne3_Origine(-15,-30).xlsx&quot;)
+Wall_lignes_firminy &lt;- as.data.frame(Wall_lignes_firminy)
+Wall_lignes_firminy$`Start X&#39;` &lt;- as.numeric(Wall_lignes_firminy$`Start X&#39;`)/100
+Wall_lignes_firminy$`Start Y&#39;` &lt;- as.numeric(Wall_lignes_firminy$`Start Y&#39;`)/100
+Wall_lignes_firminy$`End X&#39;` &lt;- as.numeric(Wall_lignes_firminy$`End X&#39;`)/100
+Wall_lignes_firminy$`End Y&#39;` &lt;- as.numeric(Wall_lignes_firminy$`End Y&#39;`)/100
+
+# plot(c(-120, 20), c(-120, 20), type=&quot;n&quot;, main =(&quot;with outliers&quot;) )
+# segments(Wall_lignes_firminy$`Start X&#39;`, Wall_lignes_firminy$`Start Y&#39;`, Wall_lignes_firminy$`End X&#39;`, Wall_lignes_firminy$`End Y&#39;`)
+
+walls &lt;- Wall_lignes_firminy[,7:12]
+colnames(walls) &lt;- c(&quot;endx&quot;, &quot;endy&quot;, &quot;endz&quot;, &quot;x&quot;, &quot;y&quot;, &quot;z&quot;)
+
+plan &lt;- ggplot()+ 
+  geom_segment(data = walls,  mapping = aes(x = x, y = y, xend=endx, yend=endy))+
+  xlim(-80, 80)+
+  ylim(-80,80)
+print(plan)</code></pre>
+<pre><code>## Warning: Removed 154 rows containing missing values (geom_segment).</code></pre>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+</div>
+<div id="analyse-des-donnnées-du-tag-0da6-le-8-novembre-2021-entre-08h00-et-10h00" class="section level1">
+<h1>Analyse des donnnées du tag 0da6 le 8 novembre 2021 entre 08h00 et 10h00</h1>
+<pre class="r"><code>x &lt;- intersect(which(`0da6_8nov21`$date&gt; &quot;2021-11-08 08:00:00&quot;), which(`0da6_8nov21`$date&lt; &quot;2021-11-08 10:00:00&quot;))
+data &lt;- `0da6_8nov21`[x,]
+
+data.point &lt;- plan+
+  geom_point(data = data, aes(x, y), size=0.1, color=&quot;red&quot;)
+print(data.point)</code></pre>
+<pre><code>## Warning: Removed 154 rows containing missing values (geom_segment).</code></pre>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<pre class="r"><code># write_xlsx(data, &#39;?.xlsx&#39;)
+
+# points &lt;- plan+
+#   geom_point(data = data, aes(x, y), size=0.1, color=&quot;red&quot;)+
+#   # fFor animating the plot
+#   labs(title = &#39;0da6: {frame_time}&#39;, x = &#39;X&#39;, y = &#39;Y&#39;) +
+#   transition_time(as_datetime(data$record_timestamp)) +
+#   ease_aes(&#39;linear&#39;)
+# 
+#  animate(points, fps=1)
+#  
+# anim_save(&#39;~/Devellyn/traitement_data position/Firminy installation/Firminy installation/data/0da6-8non21-8h-10h.gif&#39;)</code></pre>
+</div>
+<div id="data-clustering" class="section level1">
+<h1>Data clustering</h1>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre><code>## Warning in dbscan(xy[, 2:3], eps = 0.15, MinPts = 5): converting argument MinPts
+## (fpc) to minPts (dbscan)!</code></pre>
+<pre><code>## DBSCAN clustering for 35023 objects.
+## Parameters: eps = 0.15, minPts = 5
+## The clustering contains 7 cluster(s) and 83 noise points.
+## 
+##     0     1     2     3     4     5     6     7 
+##    83 34882    20    10     9     5     5     9 
+## 
+## Available fields: cluster, eps, minPts</code></pre>
+<pre><code>## [1] 8</code></pre>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-5-2.png" width="672" /></p>
+<pre><code>## Warning: Removed 154 rows containing missing values (geom_segment).</code></pre>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-5-3.png" width="672" /></p>
+<pre><code>## Warning: Removed 154 rows containing missing values (geom_segment).</code></pre>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-5-4.png" width="672" /></p>
+<pre><code>## Warning: position_dodge requires non-overlapping x intervals</code></pre>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-5-5.png" width="672" /></p>
+<pre><code>## Warning: Removed 154 rows containing missing values (geom_segment).</code></pre>
+<p><img src="Stabilised-and-corrected-data_files/figure-html/unnamed-chunk-5-6.png" width="672" /></p>
 </div>
 
 

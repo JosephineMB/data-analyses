@@ -6,6 +6,8 @@ navbar:
       href: index.html
     - text: "About"
       href: about.html
+    - text: " Example of stabilised and corrected data"
+      href: Stabilised_corrected_data.html
 output: 
   html_document: 
     theme: cosmo
