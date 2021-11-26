@@ -1,0 +1,252 @@
+---
+title: "Analyse 0da6 7nov21_2h-3h"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rjson)
+library("writexl")
+library("lubridate")
+library(manipulate)
+library(sp) # for polygons
+library(TeachingDemos) # for zoomplot
+library(fpc) # for dbscan clustering
+library(dbscan) # for KNN dbscan
+library(raster) # for distance calculation
+library(readxl)
+library(ggplot2)
+library(gganimate)
+library(gifski)
+library(tictoc)
+```
+
+# Data 
+```{r }
+`0da6_9nov21` <- read.csv2("~/Devellyn/traitement_data position/Firminy installation/Firminy installation/data/0da6_9nov21.csv")
+
+tagId <- unique(`0da6_9nov21`$tag)
+```
+
+
+# Plan
+
+```{r}
+Wall_lignes_firminy <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Walls_ligne3_Origine(-15,-30).xlsx")
+Wall_lignes_firminy <- as.data.frame(Wall_lignes_firminy)
+Wall_lignes_firminy$`Start X'` <- as.numeric(Wall_lignes_firminy$`Start X'`)/100
+Wall_lignes_firminy$`Start Y'` <- as.numeric(Wall_lignes_firminy$`Start Y'`)/100
+Wall_lignes_firminy$`End X'` <- as.numeric(Wall_lignes_firminy$`End X'`)/100
+Wall_lignes_firminy$`End Y'` <- as.numeric(Wall_lignes_firminy$`End Y'`)/100
+
+# plot(c(-120, 20), c(-120, 20), type="n", main =("with outliers") )
+# segments(Wall_lignes_firminy$`Start X'`, Wall_lignes_firminy$`Start Y'`, Wall_lignes_firminy$`End X'`, Wall_lignes_firminy$`End Y'`)
+
+walls <- Wall_lignes_firminy[,7:12]
+colnames(walls) <- c("endx", "endy", "endz", "x", "y", "z")
+
+plan <- ggplot()+ 
+  geom_segment(data = walls,  mapping = aes(x = x, y = y, xend=endx, yend=endy)) +
+  xlim(-80, 80)+
+  ylim(-80,80)
+print(plan)
+```
+
+# Analyse des donnnées entre 02h00 et 03h00
+
+```{r}
+x <- intersect(which(`0da6_9nov21`$date> "2021-11-09 02:00:00"), which(`0da6_9nov21`$date< "2021-11-09 03:00:00"))
+data <- `0da6_9nov21`[x,]
+
+data.point <- plan+
+  geom_point(data = data, aes(x, y), size=0.1, color="red")
+print(data.point)
+
+# write_xlsx(data, '?.xlsx')
+
+# points <- plan+
+#   geom_point(data = data, aes(x, y), size=0.1, color="red")+
+#   # fFor animating the plot
+#   labs(title = '0da6: {frame_time}', x = 'X', y = 'Y') +
+#   transition_time(as_datetime(data$record_timestamp)) +
+#   ease_aes('linear')
+# 
+#  animate(points, fps=1)
+# anim_save('~/Devellyn/traitement_data position/Firminy installation/Firminy installation/data/2e8d-15non21.gif')
+
+```
+
+# Data clustering 
+
+```{r, echo=FALSE}
+# Fitting DBScan clustering Model 
+xy <- data
+xy <- na.omit(xy)
+dbscan::kNNdistplot(xy[,2:3], k =  5)
+abline(h = 0.15, lty = 2)
+
+# to training dataset
+set.seed(220)  # Setting seed
+Dbscan_cl <- dbscan(xy[,2:3], eps = 0.15, MinPts = 5)
+Dbscan_cl
+# Checking cluster
+# Dbscan_cl$cluster
+
+# Table
+clusters <- table(Dbscan_cl$cluster)
+nb.clusters <- length(clusters)
+nb.clusters
+
+# Plotting Cluster
+plot(Dbscan_cl,xy[,2:3], main = paste(tagId, "clustering", sep = " "))
+# plot(Dbscan_cl, data, main = "Petal Width vs Sepal Length")
+
+indx.out.points <- which(Dbscan_cl$cluster==0)
+
+indx.stable.points <- which(Dbscan_cl$cluster==1)
+
+corr.data <- xy
+rownames(corr.data) <- NULL
+for(k in 1:(nb.clusters-1)){
+  indx.stable.points <- which(Dbscan_cl$cluster==k)
+  s <- min(indx.stable.points): max(indx.stable.points)
+  corr.data[s, 2] <- mean(xy[s, 2])
+  corr.data[s, 3] <- mean(xy[s, 3])
+  # corr.data[indx.stable.points, 1] <- mean(xy[indx.stable.points, 1])
+  # corr.data[indx.stable.points, 2] <- mean(xy[indx.stable.points, 2])
+}
+write_xlsx(corr.data, 'stabilized_oda6_9nov21_02h-03h.xlsx')
+
+
+p1 <- plan+ 
+  geom_point(data = xy[,2:3], aes(x, y), size=0.1, color="red")+
+    ggtitle("Raw data")
+print(p1)
+
+p1.stable <- plan+ 
+  geom_point(data = xy[indx.stable.points,2:3], aes(x, y), size=0.1, color="green")+
+    ggtitle("Stabilized data")
+print(p1.stable)
+
+p1.stable <- ggplot(data = corr.data[,2:3], aes(x, y, label=rownames(corr.data)))+
+  geom_point(size=0.1,color="green")
+p1.stable+geom_text(position = position_dodge(width=0.9),  size=2, hjust=1.5)
+
+
+p1.stable.brut <- plan+ 
+  geom_point(data = xy[,2:3], aes(x, y), size=0.1, color="red")+
+  geom_point(data = corr.data[,2:3], aes(x, y), size=0.1, color="green")+
+ scale_color_identity(guide = "legend")+
+    ggtitle("Raw data vs stabilizes data")
+print(p1.stable.brut)
+
+# MA
+library(RcppRoll)
+N <- 15
+
+x_smoothed <- roll_mean(xy[,2],n = N)
+y_smoothed  <- roll_mean(xy[,3], n=N)
+
+MA1.brut <- plan+ 
+  geom_point(aes(x_smoothed, y_smoothed), size=0.1, color="red") +
+  ggtitle("Smoothing raw data")
+print(MA1.brut)
+
+x_smoothed <- roll_mean(corr.data[,2],n = N)
+y_smoothed  <- roll_mean(corr.data[,3], n=N)
+
+MA1.corr <- plan+ 
+  geom_point(aes(x_smoothed, y_smoothed), size=0.1, color="green") +
+    ggtitle("Smoothing stabilized data")
+print(MA1.corr)
+
+```
+## Method 2
+
+```{r, echo=FALSE}
+# Fitting DBScan clustering Model 
+xy <- data
+xy <- na.omit(xy)
+dbscan::kNNdistplot(xy[,2:3], k =  5)
+abline(h = 0.6, lty = 2)
+
+# to training dataset
+set.seed(220)  # Setting seed
+Dbscan_cl <- dbscan(xy[,2:3], eps = 0.1, MinPts = 5)
+Dbscan_cl
+# Checking cluster
+# Dbscan_cl$cluster
+
+# Table
+clusters <- table(Dbscan_cl$cluster)
+nb.clusters <- length(clusters)
+nb.clusters
+
+# Plotting Cluster
+plot(Dbscan_cl,xy[,2:3], main = paste(tagId, "clustering", sep = " "))
+# plot(Dbscan_cl, data, main = "Petal Width vs Sepal Length")
+
+indx.out.points <- which(Dbscan_cl$cluster==0)
+
+indx.stable.points <- which(Dbscan_cl$cluster==1)
+
+corr.data <- xy
+rownames(corr.data) <- NULL
+for(k in 1:(nb.clusters-1)){
+  indx.stable.points <- which(Dbscan_cl$cluster==k)
+  # s <- min(indx.stable.points): max(indx.stable.points)
+  # corr.data[s, 2] <- mean(xy[s, 1])
+  # corr.data[s, 3] <- mean(xy[s, 2])
+  corr.data[indx.stable.points, 2] <- mean(xy[indx.stable.points, 2])
+  corr.data[indx.stable.points, 3] <- mean(xy[indx.stable.points, 3])
+}
+
+p1 <- plan+ 
+  geom_point(data = xy[,2:3], aes(x, y), size=0.1, color="red")+
+    ggtitle("Raw data")
+print(p1)
+
+p1.stable <- plan+ 
+  geom_point(data = xy[indx.stable.points,2:3], aes(x, y), size=0.1, color="green")+
+    ggtitle("Stabilized data")
+print(p1.stable)
+
+p1.stable <- ggplot(data = corr.data[,2:3], aes(x, y, label=rownames(corr.data)))+
+  geom_point(size=0.1,color="green")
+p1.stable+geom_text(position = position_dodge(width=0.9),  size=2, hjust=1.5)
+
+
+p1.stable.brut <- plan+ 
+  geom_point(data = xy[,2:3], aes(x, y), size=0.1, color="red")+
+  geom_point(data = corr.data[,2:3], aes(x, y), size=0.1, color="green")+
+ scale_color_identity(guide = "legend")+
+    ggtitle("Raw data vs stabilized data")
+print(p1.stable.brut)
+
+
+# MA
+library(RcppRoll)
+N <- 15
+
+x_smoothed <- roll_mean(xy[,2],n = N)
+y_smoothed  <- roll_mean(xy[,3], n=N)
+
+MA1.brut <- plan+ 
+  geom_point(aes(x_smoothed, y_smoothed), size=0.1, color="red") +
+  ggtitle("Smoothing raw data")
+print(MA1.brut)
+
+x_smoothed <- roll_mean(corr.data[,2],n = N)
+y_smoothed  <- roll_mean(corr.data[,3], n=N)
+
+MA1.corr <- plan+ 
+  geom_point(aes(x_smoothed, y_smoothed), size=0.1, color="green") +
+    ggtitle("Smoothing stabilized data")
+print(MA1.corr)
+```
+
+
